@@ -224,6 +224,10 @@ export default function App() {
 
   const EveningView = () => {
     const [plantInput, setPlantInput] = useState("");
+    const [winText, setWinText] = useState(entry.reflection.win || "");
+    const [struggleText, setStruggleText] = useState(entry.reflection.struggle || "");
+    const [goalText, setGoalText] = useState(entry.tomorrowGoal || "");
+    
     const addPlant = (p) => {
       const name = (p || "").trim();
       if (!name || entry.nutrition.plants.includes(name)) return;
@@ -328,18 +332,36 @@ export default function App() {
         </div>
 
         <div className="space-y-3">
-          {[["win","✨ One win"],["struggle","🌧 One struggle"]].map(([k, lbl]) => (
-            <div key={k}>
-              <label className="block text-sm text-gray-600 mb-1">{lbl}</label>
-              <textarea value={entry.reflection[k]} onChange={e => updateEntry({ reflection: { [k]: e.target.value } })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 resize-none" rows={2} />
-            </div>
-          ))}
+          <div>
+            <label className="block text-sm text-gray-600 mb-1">✨ One win</label>
+            <textarea 
+              value={winText} 
+              onChange={e => setWinText(e.target.value)}
+              onBlur={() => updateEntry({ reflection: { win: winText } })}
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 resize-none" 
+              rows={2} 
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-gray-600 mb-1">🌧 One struggle</label>
+            <textarea 
+              value={struggleText} 
+              onChange={e => setStruggleText(e.target.value)}
+              onBlur={() => updateEntry({ reflection: { struggle: struggleText } })}
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 resize-none" 
+              rows={2} 
+            />
+          </div>
           <div>
             <label className="block text-sm text-gray-600 mb-1">🎯 Tomorrow's goal</label>
-            <input type="text" value={entry.tomorrowGoal} onChange={e => updateEntry({ tomorrowGoal: e.target.value })}
+            <input 
+              type="text" 
+              value={goalText} 
+              onChange={e => setGoalText(e.target.value)}
+              onBlur={() => updateEntry({ tomorrowGoal: goalText })}
               placeholder="What's your focus tomorrow?"
-              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200" 
+            />
           </div>
         </div>
 
