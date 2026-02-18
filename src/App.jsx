@@ -444,7 +444,7 @@ export default function App() {
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-indigo-50 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-blue-50 to-cyan-50 flex items-center justify-center">
       <p className="text-gray-400">Loading Gizi...</p>
     </div>
   );
@@ -452,7 +452,7 @@ export default function App() {
   const todayEntry = deepMerge(EMPTY_ENTRY, allEntries[todayStr] || {});
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-blue-50 to-cyan-50">
       <div className="max-w-lg mx-auto p-5 pb-16">
 
         {saveStatus && (
@@ -497,20 +497,20 @@ export default function App() {
             </div>
 
             <div className="space-y-3">
-              <button onClick={() => setView("morning")} className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white p-5 rounded-2xl hover:shadow-lg transition-all text-left flex items-center gap-4">
+              <button onClick={() => setView("morning")} className="w-full bg-gradient-to-r from-amber-500 to-orange-400 text-white p-5 rounded-2xl hover:shadow-lg transition-all text-left flex items-center gap-4">
                 <Moon size={26} />
                 <div className="flex-1">
                   <div className="font-medium">Morning Check-in</div>
-                  <div className="text-indigo-200 text-sm">Log your sleep</div>
+                  <div className="text-amber-100 text-sm">Log your sleep</div>
                 </div>
-                {allEntries[activeDate]?.sleep?.bedtime && <span className="text-indigo-200 text-xl">✓</span>}
+                {allEntries[activeDate]?.sleep?.bedtime && <span className="text-white text-xl">✓</span>}
               </button>
 
-              <button onClick={() => setView("evening")} className="w-full bg-gradient-to-r from-amber-500 to-orange-400 text-white p-5 rounded-2xl hover:shadow-lg transition-all text-left flex items-center gap-4">
+              <button onClick={() => setView("evening")} className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white p-5 rounded-2xl hover:shadow-lg transition-all text-left flex items-center gap-4">
                 <Sun size={26} />
                 <div className="flex-1">
                   <div className="font-medium">Evening Check-in</div>
-                  <div className="text-amber-100 text-sm">Habits, plants & reflection</div>
+                  <div className="text-indigo-100 text-sm">Habits, plants & reflection</div>
                 </div>
                 {allEntries[activeDate]?.dayColor && <span className="text-amber-100 text-xl">✓</span>}
               </button>
@@ -522,6 +522,58 @@ export default function App() {
                   <div className="text-emerald-100 text-sm">See your patterns</div>
                 </div>
               </button>
+
+              <button onClick={() => {
+  const data = localStorage.getItem("gizi-entries");
+  const blob = new Blob([data], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `gizi-backup-${new Date().toISOString().split("T")[0]}.json`;
+  a.click();
+}} className="w-full bg-gradient-to-r from-slate-500 to-gray-600 text-white p-5 rounded-2xl hover:shadow-lg transition-all text-left flex items-center gap-4">
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+  </svg>
+  <div className="flex-1">
+    <div className="font-medium">Export Data</div>
+    <div className="text-gray-200 text-sm">Download backup file</div>
+  </div>
+</button>
+
+
+<button onClick={() => {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json";
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const data = event.target.result;
+          localStorage.setItem("gizi-entries", data);
+          setAllEntries(JSON.parse(data));
+          alert("Data imported successfully! ✓");
+        } catch (err) {
+          alert("Failed to import data ✗");
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+  input.click();
+}} className="w-full bg-gradient-to-r from-teal-500 to-emerald-600 text-white p-5 rounded-2xl hover:shadow-lg transition-all text-left flex items-center gap-4">
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+  </svg>
+  <div className="flex-1">
+    <div className="font-medium">Import Data</div>
+    <div className="text-emerald-100 text-sm">Restore from backup</div>
+  </div>
+</button>
+
             </div>
 
             <div className="bg-white/70 p-4 rounded-2xl border border-white/80 shadow-sm">
