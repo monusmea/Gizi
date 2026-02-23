@@ -1,26 +1,43 @@
 import { useState, useEffect, useCallback } from "react";
-import { Moon, Sun, Droplets, Leaf, Heart, TrendingUp, ChevronLeft, ChevronRight, Download, Upload } from "lucide-react";
+import { Moon, Sun, Droplets, Leaf, Heart, TrendingUp, ChevronLeft, ChevronRight, Download, Upload, ChevronDown } from "lucide-react";
 
 /* ─── Design Tokens ─────────────────────────────────────────── */
-// bg:        #f9f6f1  (warm off-white)
-// text:      #3A3D38  (near-black warm)
+// bg:        #f9f6f1  warm off-white
+// text:      #3A3D38  near-black warm
 // muted:     #999
-// morning:   #CA9BAB  (dusty rose/mauve)
-// evening:   #5B3C44  (deep plum)
-// week:      #8B8D78  (sage olive)
-// selected:  #b7ad76  (olive gold, date border)
+// morning:   #CA9BAB  dusty rose/mauve
+// evening:   #5B3C44  deep plum
+// week:      #8B8D78  sage olive
+// selected:  #b7ad76  olive gold (date border)
 // card:      #ffffff
-// chip-bg:   #f0ede8  (warm chip default)
+// chip-bg:   #ffffff  white default
 
 const EMPTY_ENTRY = {
   sleep: { bedtime: "", waketime: "", quality: [], disruptions: [], morningState: [] },
-  habits: { walk: false, focus: false, stretching: false, vitamins: false, reading: false, water: 0, period: false },
+  habits: {
+    walk: false, focus: false, stretching: false, reading: false, water: 0,
+    period: false,
+    vitamins: {
+      creatine: false, vitaminB: false, magnesium: false,
+      vitaminD: false, vitaminCIron: false, omega3: false, ginkobiloba: false
+    }
+  },
   nutrition: { plants: [], digestiveSymptoms: [], digestiveCause: "" },
   wellbeing: { energy: 5, mood: 5, physical: 5, mentalClarity: 5 },
   reflection: { win: "", struggle: "", catTime: "" },
   dayColor: "",
   tomorrowGoal: ""
 };
+
+const VITAMIN_LIST = [
+  { key: "creatine",     label: "Creatine" },
+  { key: "vitaminB",     label: "Vitamin B" },
+  { key: "magnesium",    label: "Magnesium" },
+  { key: "vitaminD",     label: "Vitamin D" },
+  { key: "vitaminCIron", label: "Vitamin C + Iron" },
+  { key: "omega3",       label: "Omega 3" },
+  { key: "ginkobiloba",  label: "Ginkobiloba" },
+];
 
 function getMonday(d) {
   const date = new Date(d);
@@ -54,61 +71,131 @@ function fmt(dateStr) {
   return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 }
 
-/* ─── Chip component ─────────────────────────────────────────── */
+/* ─── Chip ───────────────────────────────────────────────────── */
 function Chip({ label, active, theme = "morning", onClick }) {
+  const base = { padding: "8px 16px", borderRadius: 20, fontSize: 13, cursor: "pointer", border: "none", transition: "all 0.15s" };
   const themes = {
-    morning: active
-      ? "background:#CA9BAB;color:white;border-color:#CA9BAB"
-      : "background:#f0ede8;color:#3A3D38;border-color:transparent",
-    evening: active
-      ? "background:#5B3C44;color:white;border-color:#5B3C44"
-      : "background:#f0ede8;color:#3A3D38;border-color:transparent",
-    green: active
-      ? "background:#4a7c59;color:white;border-color:#4a7c59"
-      : "background:#f0ede8;color:#3A3D38;border-color:transparent",
-    cat: active
-      ? "background:#CA9BAB;color:white;border-color:#CA9BAB"
-      : "background:#f0ede8;color:#3A3D38;border-color:transparent",
+    morning: active ? { ...base, background: "#CA9BAB", color: "white" } : { ...base, background: "white", color: "#3A3D38" },
+    evening: active ? { ...base, background: "#5B3C44", color: "white" } : { ...base, background: "white", color: "#3A3D38" },
+    green:   active ? { ...base, background: "#4a7c59", color: "white" } : { ...base, background: "white", color: "#3A3D38" },
+    cat:     active ? { ...base, background: "#CA9BAB", color: "white" } : { ...base, background: "white", color: "#3A3D38" },
   };
-  return (
-    <button
-      onClick={onClick}
-      style={{ cssText: themes[theme] }}
-      className="px-3 py-2 rounded-full text-sm border transition-all"
-    >
-      {label}
-    </button>
-  );
+  return <button onClick={onClick} style={themes[theme] || themes.morning}>{label}</button>;
 }
 
-/* ─── Slider component ───────────────────────────────────────── */
+/* ─── Slider ─────────────────────────────────────────────────── */
 function Slider({ label, val, onChange }) {
   return (
     <div>
-      <div className="flex justify-between items-center mb-1">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
         <label style={{ color: "#666", fontSize: 13 }}>{label}</label>
         <span style={{ color: "#5B3C44", fontSize: 20, fontWeight: 300 }}>{val}</span>
       </div>
-      <input
-        type="range" min="1" max="10" value={val}
+      <input type="range" min="1" max="10" value={val}
         onChange={e => onChange(parseInt(e.target.value))}
-        className="w-full"
-        style={{ accentColor: "#5B3C44" }}
-      />
+        style={{ width: "100%", accentColor: "#5B3C44" }} />
     </div>
   );
 }
 
+/* ─── VitaminAccordion ───────────────────────────────────────── */
+function VitaminAccordion({ vitamins, onToggle }) {
+  const [open, setOpen] = useState(false);
+  const checkedCount = VITAMIN_LIST.filter(v => vitamins[v.key]).length;
+  return (
+    <div style={{ background: "white", borderRadius: 14, border: "2px solid #f0ede8", overflow: "hidden" }}>
+      <button onClick={() => setOpen(o => !o)}
+        style={{ width: "100%", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "none", border: "none", cursor: "pointer" }}>
+        <span style={{ fontSize: 13, color: "#666", display: "flex", alignItems: "center", gap: 8 }}>
+          💊 Vitamins & Supplements
+          {checkedCount > 0 && (
+            <span style={{ background: "#5B3C44", color: "white", borderRadius: 20, fontSize: 11, padding: "2px 8px" }}>
+              {checkedCount}/{VITAMIN_LIST.length}
+            </span>
+          )}
+        </span>
+        <ChevronDown size={16} color="#999"
+          style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
+      </button>
+      {open && (
+        <div style={{ borderTop: "1px solid #f0ede8", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+          {VITAMIN_LIST.map(({ key, label }) => (
+            <label key={key} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+              <input type="checkbox" checked={!!vitamins[key]}
+                onChange={() => onToggle(key)}
+                style={{ width: 17, height: 17, accentColor: "#5B3C44", cursor: "pointer" }} />
+              <span style={{ fontSize: 14, color: "#3A3D38" }}>{label}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── DateBar ────────────────────────────────────────────────── */
+// Today is always at position 4 (index 3): 3 days before + today + 3 days after
+function DateBar({ todayStr, activeDate, setActiveDate, allEntries }) {
+  const dates = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(todayStr + "T12:00:00");
+    d.setDate(d.getDate() - 3 + i);
+    return d.toISOString().split("T")[0];
+  });
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+        {dates.map(d => {
+          const e = allEntries[d];
+          const isToday = d === todayStr;
+          const isActive = d === activeDate;
+          const isFuture = d > todayStr;
+          return (
+            <button key={d} onClick={() => !isFuture && setActiveDate(d)}
+              style={{
+                flexShrink: 0, minWidth: 52, padding: "10px 8px", borderRadius: 12,
+                textAlign: "center", cursor: isFuture ? "default" : "pointer",
+                background: "white",
+                border: isActive ? "3px solid #b7ad76" : "3px solid transparent",
+                color: isFuture ? "#ccc" : isActive ? "#3A3D38" : "#666",
+                opacity: isFuture ? 0.35 : 1,
+                transition: "all 0.15s"
+              }}>
+              <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 3 }}>
+                {new Date(d + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short" })}
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 600 }}>{new Date(d + "T12:00:00").getDate()}</div>
+              {e?.dayColor ? (
+                <div style={{ width: 7, height: 7, borderRadius: "50%", margin: "4px auto 0",
+                  background: e.dayColor === "Green" ? "#6bb87a" : e.dayColor === "Yellow" ? "#f5a623" : "#e05c5c" }} />
+              ) : <div style={{ height: 11 }} />}
+              {isToday && <div style={{ fontSize: 10, color: "#999", marginTop: 2 }}>today</div>}
+            </button>
+          );
+        })}
+      </div>
+      {activeDate !== todayStr && (
+        <p style={{ fontSize: 11, textAlign: "center", color: "#b7ad76", marginTop: 6 }}>
+          Editing: {fmt(activeDate)}
+          <button onClick={() => setActiveDate(todayStr)}
+            style={{ marginLeft: 8, background: "none", border: "none", cursor: "pointer", color: "#b7ad76", fontSize: 11 }}>
+            ← back to today
+          </button>
+        </p>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
 export default function App() {
   const todayStr = new Date().toISOString().split("T")[0];
-  const [view, setView] = useState("home");
+  const [view, setView]             = useState("home");
   const [activeDate, setActiveDate] = useState(todayStr);
   const [allEntries, setAllEntries] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [weekStart, setWeekStart] = useState(getMonday(new Date()));
+  const [loading, setLoading]       = useState(true);
+  const [weekStart, setWeekStart]   = useState(getMonday(new Date()));
   const [saveStatus, setSaveStatus] = useState("");
 
-  /* Load Google Font for title */
   useEffect(() => {
     const link = document.createElement("link");
     link.rel = "stylesheet";
@@ -118,9 +205,7 @@ export default function App() {
 
   useEffect(() => {
     const saved = localStorage.getItem("gizi-entries");
-    if (saved) {
-      try { setAllEntries(JSON.parse(saved)); } catch (e) { console.error(e); }
-    }
+    if (saved) { try { setAllEntries(JSON.parse(saved)); } catch (e) { console.error(e); } }
     setLoading(false);
   }, []);
 
@@ -129,9 +214,7 @@ export default function App() {
       localStorage.setItem("gizi-entries", JSON.stringify(newAll));
       setSaveStatus("Saved ✓");
       setTimeout(() => setSaveStatus(""), 2000);
-    } catch (e) {
-      setSaveStatus("Save failed ✗");
-    }
+    } catch { setSaveStatus("Save failed ✗"); }
   }, []);
 
   const entry = deepMerge(EMPTY_ENTRY, allEntries[activeDate] || {});
@@ -157,106 +240,56 @@ export default function App() {
     const plants = new Set();
     wEntries.forEach(e => e.nutrition?.plants?.forEach(p => plants.add(p)));
     const avgWater = wEntries.length
-      ? (wEntries.reduce((s, e) => s + (e.habits?.water || 0), 0) / wEntries.length).toFixed(1)
-      : 0;
+      ? (wEntries.reduce((s, e) => s + (e.habits?.water || 0), 0) / wEntries.length).toFixed(1) : 0;
     const habitTotals = {};
-    ["walk","focus","stretching","vitamins","reading"].forEach(k => {
+    ["walk","focus","stretching","reading"].forEach(k => {
       habitTotals[k] = dates.filter(d => allEntries[d]?.habits?.[k]).length;
     });
     return { colors, plants: plants.size, avgWater, habitTotals };
   };
 
-  const SLEEP_QUALITY  = ["😴 Restful","😐 Okay","😵 Poor","🔄 Restless"];
-  const DISRUPTIONS    = ["🌙 Woke during night","🐱 Cat care","💭 Racing thoughts","🚽 Bathroom","🔥 Too hot","❄️ Too cold","🛏️ Uncomfortable","💪 Back/body pain","🔊 Noise"];
-  const MORNING_STATE  = ["⚡ Energized","😊 Rested","😑 Tired but okay","🥱 Exhausted","🤕 Groggy"];
-  const DIGESTIVE      = ["🔥 Reflux","💨 Bloating","😣 Discomfort","🩸 Period","😴 Fatigue","🤕 Headache"];
-  const COMMON_PLANTS  = ["Avocado","Broccoli","Apple","Raspberry","Oats","Cinnamon","Ginger","Lentils","Chickpeas","Spinach","Kale","Carrot","Banana","Blueberry","Pumpkin seeds","Walnut","Flaxseed","Garlic","Turmeric","Onion","Sweet potato","Beetroot","Parsley","Dill","Cumin","Fennel","Rye","Barley","Brown rice","Quinoa"];
+  const SLEEP_QUALITY = ["😴 Restful","😐 Okay","😵 Poor","🔄 Restless"];
+  const DISRUPTIONS   = ["🌙 Woke during night","🐱 Cat care","💭 Racing thoughts","🚽 Bathroom","🔥 Too hot","❄️ Too cold","🛏️ Uncomfortable","💪 Back/body pain","🔊 Noise"];
+  const MORNING_STATE = ["⚡ Energized","😊 Rested","😑 Tired but okay","🥱 Exhausted","🤕 Groggy"];
+  const DIGESTIVE     = ["🔥 Reflux","💨 Bloating","😣 Discomfort","😴 Fatigue","🤕 Headache"];
+  const COMMON_PLANTS = ["Avocado","Broccoli","Apple","Raspberry","Oats","Cinnamon","Ginger","Lentils","Chickpeas","Spinach","Kale","Carrot","Banana","Blueberry","Pumpkin seeds","Walnut","Flaxseed","Garlic","Turmeric","Onion","Sweet potato","Beetroot","Parsley","Dill","Cumin","Fennel","Rye","Barley","Brown rice","Quinoa"];
 
-  /* ─── Date Bar (shared) ────────────────────────────────────── */
-  const DateBar = () => {
-    const dates = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(); d.setDate(d.getDate() - 6 + i);
-      return d.toISOString().split("T")[0];
-    });
-    return (
-      <div style={{ marginBottom: 20 }}>
-        {activeDate !== todayStr && (
-          <button
-            onClick={() => setActiveDate(todayStr)}
-            style={{ color: "#b7ad76", fontSize: 13, marginBottom: 10, background: "none", border: "none", cursor: "pointer", padding: 0 }}
-          >
-            ← Back to today
-          </button>
-        )}
-        <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
-          {dates.map(d => {
-            const e = allEntries[d];
-            const isToday = d === todayStr;
-            const isActive = d === activeDate;
-            const dayLabel = new Date(d + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short" });
-            const dayNum   = new Date(d + "T12:00:00").getDate();
-            return (
-              <button key={d} onClick={() => setActiveDate(d)}
-                style={{
-                  flexShrink: 0, minWidth: 52, padding: "10px 8px",
-                  borderRadius: 12, textAlign: "center", cursor: "pointer",
-                  background: "white",
-                  border: isActive ? "3px solid #b7ad76" : "3px solid transparent",
-                  color: isActive ? "#3A3D38" : "#666",
-                  transition: "all 0.15s"
-                }}>
-                <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 3 }}>{dayLabel}</div>
-                <div style={{ fontSize: 16, fontWeight: 600 }}>{dayNum}</div>
-                {e?.dayColor ? (
-                  <div style={{
-                    width: 7, height: 7, borderRadius: "50%", margin: "4px auto 0",
-                    background: e.dayColor === "Green" ? "#6bb87a" : e.dayColor === "Yellow" ? "#f5a623" : "#e05c5c"
-                  }} />
-                ) : <div style={{ height: 11 }} />}
-                {isToday && <div style={{ fontSize: 10, color: "#999", marginTop: 2 }}>today</div>}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
+  const inputStyle = {
+    width: "100%", padding: "11px 14px", border: "2px solid #e0dcd6",
+    borderRadius: 12, fontSize: 14, color: "#3A3D38", background: "white",
+    fontFamily: "inherit", outline: "none", boxSizing: "border-box"
   };
 
-  /* ─── Morning View ─────────────────────────────────────────── */
+  const SectionLabel = ({ text }) => (
+    <label style={{ display: "block", fontSize: 13, color: "#666", marginBottom: 10 }}>{text}</label>
+  );
+
+  /* ── MORNING VIEW ─────────────────────────────────────────── */
   const MorningView = () => (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-
-      {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <Moon size={24} color="#CA9BAB" />
+        <Sun size={24} color="#CA9BAB" />
         <div>
           <h2 style={{ fontSize: 20, fontWeight: 400, color: "#3A3D38" }}>Morning Check-in</h2>
           <div style={{ fontSize: 12, color: "#999" }}>{fmt(activeDate)}</div>
         </div>
       </div>
 
-      <DateBar />
+      <DateBar todayStr={todayStr} activeDate={activeDate} setActiveDate={setActiveDate} allEntries={allEntries} />
 
-      {/* Times */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         {[["Bedtime","bedtime"],["Wake time","waketime"]].map(([lbl, k]) => (
           <div key={k}>
             <label style={{ display: "block", fontSize: 13, color: "#666", marginBottom: 8 }}>{lbl}</label>
             <input type="time" value={entry.sleep[k]}
               onChange={e => updateEntry({ sleep: { [k]: e.target.value } })}
-              style={{
-                width: "100%", padding: "10px 12px", border: "2px solid #e0dcd6",
-                borderRadius: 12, fontSize: 16, color: "#3A3D38", background: "white",
-                outline: "none"
-              }}
+              style={{ ...inputStyle, fontSize: 16 }}
               onFocus={e => e.target.style.borderColor = "#CA9BAB"}
-              onBlur={e => e.target.style.borderColor = "#e0dcd6"}
-            />
+              onBlur={e => e.target.style.borderColor = "#e0dcd6"} />
           </div>
         ))}
       </div>
 
-      {/* Duration */}
       {entry.sleep.bedtime && entry.sleep.waketime && (() => {
         const [bh, bm] = entry.sleep.bedtime.split(":").map(Number);
         const [wh, wm] = entry.sleep.waketime.split(":").map(Number);
@@ -270,14 +303,13 @@ export default function App() {
         );
       })()}
 
-      {/* Sleep chips */}
       {[
         ["Sleep quality", SLEEP_QUALITY, "quality"],
         ["What disrupted your sleep?", DISRUPTIONS, "disruptions"],
         ["How do you feel this morning?", MORNING_STATE, "morningState"],
       ].map(([lbl, opts, key]) => (
         <div key={key}>
-          <label style={{ display: "block", fontSize: 13, color: "#666", marginBottom: 10 }}>{lbl}</label>
+          <SectionLabel text={lbl} />
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {opts.map(o => (
               <Chip key={o} label={o} active={entry.sleep[key].includes(o)} theme="morning"
@@ -294,12 +326,12 @@ export default function App() {
     </div>
   );
 
-  /* ─── Evening View ─────────────────────────────────────────── */
+  /* ── EVENING VIEW ─────────────────────────────────────────── */
   const EveningView = () => {
-    const [plantInput, setPlantInput]   = useState("");
-    const [winText, setWinText]         = useState(entry.reflection.win || "");
-    const [struggleText, setStruggle]   = useState(entry.reflection.struggle || "");
-    const [goalText, setGoalText]       = useState(entry.tomorrowGoal || "");
+    const [plantInput, setPlantInput] = useState("");
+    const [winText, setWinText]       = useState(entry.reflection.win || "");
+    const [struggleText, setStruggle] = useState(entry.reflection.struggle || "");
+    const [goalText, setGoalText]     = useState(entry.tomorrowGoal || "");
 
     const addPlant = (p) => {
       const name = (p || "").trim();
@@ -309,29 +341,21 @@ export default function App() {
     };
     const removePlant = (p) => updateEntry({ nutrition: { plants: entry.nutrition.plants.filter(x => x !== p) } });
 
-    const inputStyle = {
-      width: "100%", padding: "11px 14px", border: "2px solid #e0dcd6",
-      borderRadius: 12, fontSize: 14, color: "#3A3D38", background: "white",
-      fontFamily: "inherit", outline: "none", boxSizing: "border-box"
-    };
-
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-
-        {/* Header */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Sun size={24} color="#5B3C44" />
+          <Moon size={24} color="#5B3C44" />
           <div>
             <h2 style={{ fontSize: 20, fontWeight: 400, color: "#3A3D38" }}>Evening Check-in</h2>
             <div style={{ fontSize: 12, color: "#999" }}>{fmt(activeDate)}</div>
           </div>
         </div>
 
-        <DateBar />
+        <DateBar todayStr={todayStr} activeDate={activeDate} setActiveDate={setActiveDate} allEntries={allEntries} />
 
         {/* Day color */}
         <div>
-          <label style={{ display: "block", fontSize: 13, color: "#666", marginBottom: 10 }}>How was this day?</label>
+          <SectionLabel text="How was this day?" />
           <div style={{ display: "flex", gap: 10 }}>
             {[["Green","#4a7c59"],["Yellow","#c8973a"],["Red","#c0484a"]].map(([c, col]) => (
               <button key={c} onClick={() => updateEntry({ dayColor: c })}
@@ -347,15 +371,15 @@ export default function App() {
           </div>
         </div>
 
-        {/* Habits */}
+        {/* Habits — walk, focus, stretching, reading only */}
         <div>
-          <label style={{ display: "block", fontSize: 13, color: "#666", marginBottom: 10 }}>Habits</label>
+          <SectionLabel text="Habits" />
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {[["walk","🚶 Morning walk"],["focus","🎯 Deep focus"],["stretching","🧘 Core stretching"],["vitamins","💊 Vitamins"],["reading","📖 Reading"],["period","🩸 Period day"]].map(([k, lbl]) => (
+            {[["walk","🚶 Morning walk"],["focus","🎯 Deep focus"],["stretching","🧘 Core stretching"],["reading","📖 Reading"]].map(([k, lbl]) => (
               <button key={k} onClick={() => updateEntry({ habits: { [k]: !entry.habits[k] } })}
                 style={{
                   padding: "8px 16px", borderRadius: 20, fontSize: 13, border: "none", cursor: "pointer",
-                  background: entry.habits[k] ? "#5B3C44" : "#f0ede8",
+                  background: entry.habits[k] ? "#5B3C44" : "white",
                   color: entry.habits[k] ? "white" : "#3A3D38",
                   transition: "all 0.15s"
                 }}>
@@ -365,10 +389,30 @@ export default function App() {
           </div>
         </div>
 
+        {/* Vitamins accordion */}
+        <VitaminAccordion
+          vitamins={entry.habits.vitamins || {}}
+          onToggle={(key) => updateEntry({ habits: { vitamins: { [key]: !entry.habits.vitamins?.[key] } } })}
+        />
+
+        {/* Period — separate section */}
+        <div>
+          <SectionLabel text="Period" />
+          <button onClick={() => updateEntry({ habits: { period: !entry.habits.period } })}
+            style={{
+              padding: "8px 16px", borderRadius: 20, fontSize: 13, border: "none", cursor: "pointer",
+              background: entry.habits.period ? "#CA9BAB" : "white",
+              color: entry.habits.period ? "white" : "#3A3D38",
+              transition: "all 0.15s"
+            }}>
+            🩸 Period day
+          </button>
+        </div>
+
         {/* Water */}
         <div style={{ background: "white", padding: 20, borderRadius: 16 }}>
           <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#666", marginBottom: 14 }}>
-            <Droplets size={14} />Water (dl)
+            <Droplets size={14} /> Water (dl)
           </label>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 24 }}>
             <button onClick={() => updateEntry({ habits: { water: Math.max(0, (entry.habits.water||0) - 1) } })}
@@ -390,23 +434,20 @@ export default function App() {
               onChange={e => setPlantInput(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addPlant(plantInput); } }}
               placeholder="Type a plant & press Enter..."
-              style={{ ...inputStyle, flex: 1 }}
-            />
+              style={{ ...inputStyle, flex: 1 }} />
             <button onClick={() => addPlant(plantInput)}
               style={{ padding: "0 18px", background: "#4a7c59", color: "white", border: "none", borderRadius: 12, fontSize: 14, cursor: "pointer" }}>
               Add
             </button>
           </div>
-          {/* Quick-add chips */}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: entry.nutrition.plants.length ? 10 : 0 }}>
             {COMMON_PLANTS.filter(p => !entry.nutrition.plants.includes(p)).map(p => (
               <button key={p} onClick={() => addPlant(p)}
-                style={{ padding: "4px 12px", background: "#f0ede8", color: "#3A3D38", border: "none", borderRadius: 20, fontSize: 12, cursor: "pointer" }}>
+                style={{ padding: "4px 12px", background: "white", color: "#3A3D38", border: "none", borderRadius: 20, fontSize: 12, cursor: "pointer" }}>
                 + {p}
               </button>
             ))}
           </div>
-          {/* Logged plants */}
           {entry.nutrition.plants.length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {entry.nutrition.plants.map(p => (
@@ -421,7 +462,7 @@ export default function App() {
 
         {/* Digestive */}
         <div>
-          <label style={{ display: "block", fontSize: 13, color: "#666", marginBottom: 10 }}>Digestive symptoms?</label>
+          <SectionLabel text="Digestive symptoms?" />
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
             {DIGESTIVE.map(o => (
               <Chip key={o} label={o} active={entry.nutrition.digestiveSymptoms.includes(o)} theme="evening"
@@ -432,8 +473,7 @@ export default function App() {
             <input type="text" value={entry.nutrition.digestiveCause}
               onChange={e => updateEntry({ nutrition: { digestiveCause: e.target.value } })}
               placeholder="What might have caused it?"
-              style={inputStyle}
-            />
+              style={inputStyle} />
           )}
         </div>
 
@@ -451,7 +491,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* Wellbeing sliders */}
+        {/* Wellbeing */}
         <div style={{ background: "#f0ede8", padding: 20, borderRadius: 16 }}>
           <h3 style={{ fontSize: 13, fontWeight: 600, color: "#666", marginBottom: 16 }}>Wellbeing</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -464,16 +504,15 @@ export default function App() {
         {/* Reflection */}
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {[
-            ["✨ One win", winText, setWinText, v => updateEntry({ reflection: { win: v } }), true],
-            ["🌧 One struggle", struggleText, setStruggle, v => updateEntry({ reflection: { struggle: v } }), true],
-          ].map(([lbl, val, setter, onBlur, isTextarea]) => (
+            ["✨ One win", winText, setWinText, (v) => updateEntry({ reflection: { win: v } })],
+            ["🌧 One struggle", struggleText, setStruggle, (v) => updateEntry({ reflection: { struggle: v } })],
+          ].map(([lbl, val, setter, onBlurFn]) => (
             <div key={lbl}>
               <label style={{ display: "block", fontSize: 13, color: "#666", marginBottom: 6 }}>{lbl}</label>
               <textarea value={val} rows={2}
                 onChange={e => setter(e.target.value)}
-                onBlur={e => onBlur(e.target.value)}
-                style={{ ...inputStyle, resize: "none" }}
-              />
+                onBlur={e => onBlurFn(e.target.value)}
+                style={{ ...inputStyle, resize: "none" }} />
             </div>
           ))}
           <div>
@@ -482,8 +521,7 @@ export default function App() {
               onChange={e => setGoalText(e.target.value)}
               onBlur={e => updateEntry({ tomorrowGoal: e.target.value })}
               placeholder="What's your focus tomorrow?"
-              style={inputStyle}
-            />
+              style={inputStyle} />
           </div>
         </div>
 
@@ -495,13 +533,12 @@ export default function App() {
     );
   };
 
-  /* ─── Week View ────────────────────────────────────────────── */
+  /* ── WEEK VIEW ────────────────────────────────────────────── */
   const WeekView = () => {
     const stats = weekStats(weekStart);
     const dates = getWeekDates(weekStart);
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-        {/* Week navigator */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <button onClick={() => { const d = new Date(weekStart); d.setDate(d.getDate()-7); setWeekStart(d); }}
             style={{ padding: 8, border: "none", background: "#f0ede8", borderRadius: 10, cursor: "pointer" }}>
@@ -516,23 +553,15 @@ export default function App() {
           </button>
         </div>
 
-        {/* Day grid */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
           {["M","T","W","T","F","S","S"].map((d, i) => {
             const e = allEntries[dates[i]];
             const isToday = dates[i] === todayStr;
-            const bg = e?.dayColor === "Green" ? "#4a7c59"
-              : e?.dayColor === "Yellow" ? "#c8973a"
-              : e?.dayColor === "Red"    ? "#c0484a"
-              : "#f0ede8";
+            const bg = e?.dayColor === "Green" ? "#4a7c59" : e?.dayColor === "Yellow" ? "#c8973a" : e?.dayColor === "Red" ? "#c0484a" : "#f0ede8";
             const col = e?.dayColor ? "white" : "#999";
             return (
               <button key={i} onClick={() => { setActiveDate(dates[i]); setView("evening"); }}
-                style={{
-                  display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 0",
-                  borderRadius: 12, border: isToday ? "2px solid #b7ad76" : "2px solid transparent",
-                  background: bg, color: col, cursor: "pointer", fontSize: 12
-                }}>
+                style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 0", borderRadius: 12, border: isToday ? "2px solid #b7ad76" : "2px solid transparent", background: bg, color: col, cursor: "pointer", fontSize: 12 }}>
                 <span style={{ opacity: 0.7 }}>{d}</span>
                 <span style={{ fontWeight: 600 }}>{new Date(dates[i]).getDate()}</span>
               </button>
@@ -541,7 +570,6 @@ export default function App() {
         </div>
         <p style={{ fontSize: 11, textAlign: "center", color: "#999" }}>Tap a day to edit it</p>
 
-        {/* Color counts */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
           {[["Green","#e8f4ec","#4a7c59",stats.colors.Green],["Yellow","#fdf6e3","#c8973a",stats.colors.Yellow],["Red","#fdf0f0","#c0484a",stats.colors.Red]].map(([lbl,bg,col,val]) => (
             <div key={lbl} style={{ background: bg, borderRadius: 14, padding: "14px 10px", textAlign: "center" }}>
@@ -551,7 +579,6 @@ export default function App() {
           ))}
         </div>
 
-        {/* Plants & Water */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div style={{ background: "#e8f4ec", padding: 18, borderRadius: 16 }}>
             <div style={{ fontSize: 24, fontWeight: 300, color: "#4a7c59" }}>
@@ -570,11 +597,10 @@ export default function App() {
           </div>
         </div>
 
-        {/* Habit bars */}
         <div style={{ background: "#f0ede8", padding: 18, borderRadius: 16 }}>
           <h3 style={{ fontSize: 13, fontWeight: 600, color: "#666", marginBottom: 14 }}>Habit completion</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {[["walk","🚶 Walk"],["focus","🎯 Focus"],["stretching","🧘 Stretch"],["vitamins","💊 Vitamins"],["reading","📖 Reading"]].map(([k,lbl]) => (
+            {[["walk","🚶 Walk"],["focus","🎯 Focus"],["stretching","🧘 Stretch"],["reading","📖 Reading"]].map(([k,lbl]) => (
               <div key={k} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ fontSize: 12, width: 80, color: "#666" }}>{lbl}</span>
                 <div style={{ flex: 1, height: 6, background: "#ddd8d0", borderRadius: 3, overflow: "hidden" }}>
@@ -589,18 +615,17 @@ export default function App() {
     );
   };
 
-  /* ─── Loading ──────────────────────────────────────────────── */
+  /* ── LOADING ──────────────────────────────────────────────── */
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "#f9f6f1", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <p style={{ color: "#999" }}>Loading Gizi…</p>
     </div>
   );
 
-  /* ─── Home ─────────────────────────────────────────────────── */
+  /* ── HOME ─────────────────────────────────────────────────── */
   return (
     <div style={{ minHeight: "100vh", background: "#f9f6f1" }}>
 
-      {/* Save toast */}
       {saveStatus && (
         <div style={{ position: "fixed", top: 16, right: 16, background: "white", boxShadow: "0 4px 16px rgba(0,0,0,0.1)", borderRadius: 12, padding: "8px 18px", fontSize: 13, color: "#3A3D38", zIndex: 50, border: "1px solid #f0ede8" }}>
           {saveStatus}
@@ -609,7 +634,6 @@ export default function App() {
 
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "20px 20px 80px" }}>
 
-        {/* ── HOME ── */}
         {view === "home" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
@@ -619,7 +643,7 @@ export default function App() {
               <p style={{ color: "#999", fontSize: 13, letterSpacing: 1 }}>· Your gentle rebuild companion ·</p>
             </div>
 
-            {/* Date strip */}
+            {/* Date strip — today at position 4 (3 before + today + 3 after) */}
             <div style={{ background: "white", borderRadius: 20, padding: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
               {activeDate !== todayStr && (
                 <p style={{ fontSize: 12, textAlign: "center", color: "#b7ad76", marginBottom: 10, cursor: "pointer" }}
@@ -627,18 +651,22 @@ export default function App() {
               )}
               <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
                 {Array.from({ length: 7 }, (_, i) => {
-                  const d = new Date(); d.setDate(d.getDate() - 6 + i);
+                  const d = new Date(todayStr + "T12:00:00");
+                  d.setDate(d.getDate() - 3 + i);
                   const ds = d.toISOString().split("T")[0];
                   const e = allEntries[ds];
                   const isToday = ds === todayStr;
                   const isActive = ds === activeDate;
+                  const isFuture = ds > todayStr;
                   return (
-                    <button key={ds} onClick={() => setActiveDate(ds)}
+                    <button key={ds} onClick={() => !isFuture && setActiveDate(ds)}
                       style={{
                         flexShrink: 0, minWidth: 52, padding: "10px 8px", borderRadius: 12,
-                        textAlign: "center", cursor: "pointer", background: "white",
+                        textAlign: "center", cursor: isFuture ? "default" : "pointer",
+                        background: "white",
                         border: isActive ? "3px solid #b7ad76" : "3px solid transparent",
-                        color: isActive ? "#3A3D38" : "#666", transition: "all 0.15s"
+                        color: isFuture ? "#ccc" : isActive ? "#3A3D38" : "#666",
+                        opacity: isFuture ? 0.35 : 1, transition: "all 0.15s"
                       }}>
                       <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 3 }}>
                         {d.toLocaleDateString("en-GB",{weekday:"short"})}
@@ -660,10 +688,10 @@ export default function App() {
 
             {/* Nav cards */}
             <button onClick={() => setView("morning")}
-              style={{ width: "100%", background: "#CA9BAB", color: "white", padding: "18px 20px", borderRadius: 18, border: "none", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 16, transition: "opacity 0.15s" }}
+              style={{ width: "100%", background: "#CA9BAB", color: "white", padding: "18px 20px", borderRadius: 18, border: "none", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 16 }}
               onMouseEnter={e => e.currentTarget.style.opacity = "0.9"}
               onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
-              <Moon size={24} color="white" />
+              <Sun size={24} color="white" />
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600, fontSize: 15 }}>Morning Check-in</div>
                 <div style={{ fontSize: 13, opacity: 0.85 }}>Log your sleep</div>
@@ -672,10 +700,10 @@ export default function App() {
             </button>
 
             <button onClick={() => setView("evening")}
-              style={{ width: "100%", background: "#5B3C44", color: "white", padding: "18px 20px", borderRadius: 18, border: "none", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 16, transition: "opacity 0.15s" }}
+              style={{ width: "100%", background: "#5B3C44", color: "white", padding: "18px 20px", borderRadius: 18, border: "none", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 16 }}
               onMouseEnter={e => e.currentTarget.style.opacity = "0.9"}
               onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
-              <Sun size={24} color="white" />
+              <Moon size={24} color="white" />
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600, fontSize: 15 }}>Evening Check-in</div>
                 <div style={{ fontSize: 13, opacity: 0.8 }}>Habits, plants & reflection</div>
@@ -684,7 +712,7 @@ export default function App() {
             </button>
 
             <button onClick={() => setView("week")}
-              style={{ width: "100%", background: "#8B8D78", color: "white", padding: "18px 20px", borderRadius: 18, border: "none", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 16, transition: "opacity 0.15s" }}
+              style={{ width: "100%", background: "#8B8D78", color: "white", padding: "18px 20px", borderRadius: 18, border: "none", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 16 }}
               onMouseEnter={e => e.currentTarget.style.opacity = "0.9"}
               onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
               <TrendingUp size={24} color="white" />
@@ -697,53 +725,33 @@ export default function App() {
             {/* At a glance */}
             <div style={{ background: "white", padding: "18px 20px", borderRadius: 18, boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
               <h3 style={{ fontSize: 14, fontWeight: 500, color: "#3A3D38", marginBottom: 14 }}>
-                {activeDate === todayStr ? `${new Date(todayStr + "T12:00:00").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})} at a glance` : `${fmt(activeDate)} at a glance`}
+                {fmt(activeDate)} at a glance
               </h3>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", rowGap: 10, columnGap: 16, fontSize: 14 }}>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#999", display: "flex", alignItems: "center", gap: 5 }}>
-                    <Moon size={13} /> Sleep
-                  </span>
+                  <span style={{ color: "#999", display: "flex", alignItems: "center", gap: 5 }}><Moon size={13} /> Sleep</span>
                   <span style={{ color: "#3A3D38" }}>
-                    {allEntries[activeDate]?.sleep?.bedtime
-                      ? `${allEntries[activeDate].sleep.bedtime} → ${allEntries[activeDate].sleep.waketime}`
-                      : "○"}
+                    {allEntries[activeDate]?.sleep?.bedtime ? `${allEntries[activeDate].sleep.bedtime} → ${allEntries[activeDate].sleep.waketime}` : "○"}
                   </span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#999", display: "flex", alignItems: "center", gap: 5 }}>
-                    <Heart size={13} /> Day
-                  </span>
-                  <span style={{
-                    fontWeight: 600,
-                    color: allEntries[activeDate]?.dayColor === "Green" ? "#4a7c59"
-                      : allEntries[activeDate]?.dayColor === "Yellow" ? "#c8973a"
-                      : allEntries[activeDate]?.dayColor === "Red"    ? "#c0484a"
-                      : "#ccc"
-                  }}>
+                  <span style={{ color: "#999", display: "flex", alignItems: "center", gap: 5 }}><Heart size={13} /> Day</span>
+                  <span style={{ fontWeight: 600, color: allEntries[activeDate]?.dayColor === "Green" ? "#4a7c59" : allEntries[activeDate]?.dayColor === "Yellow" ? "#c8973a" : allEntries[activeDate]?.dayColor === "Red" ? "#c0484a" : "#ccc" }}>
                     {allEntries[activeDate]?.dayColor || "○"}
                   </span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#999", display: "flex", alignItems: "center", gap: 5 }}>
-                    <Leaf size={13} /> Plants
-                  </span>
-                  <span style={{ color: "#4a7c59", fontWeight: 600 }}>
-                    {allEntries[activeDate]?.nutrition?.plants?.length || 0}
-                  </span>
+                  <span style={{ color: "#999", display: "flex", alignItems: "center", gap: 5 }}><Leaf size={13} /> Plants</span>
+                  <span style={{ color: "#4a7c59", fontWeight: 600 }}>{allEntries[activeDate]?.nutrition?.plants?.length || 0}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#999", display: "flex", alignItems: "center", gap: 5 }}>
-                    <Droplets size={13} /> Water
-                  </span>
-                  <span style={{ color: "#3A3D38", fontWeight: 600 }}>
-                    {allEntries[activeDate]?.habits?.water || 0}
-                  </span>
+                  <span style={{ color: "#999", display: "flex", alignItems: "center", gap: 5 }}><Droplets size={13} /> Water</span>
+                  <span style={{ color: "#3A3D38", fontWeight: 600 }}>{allEntries[activeDate]?.habits?.water || 0}</span>
                 </div>
               </div>
             </div>
 
-            {/* Export / Import — subtle links */}
+            {/* Export / Import */}
             <div style={{ display: "flex", justifyContent: "center", gap: 32, paddingTop: 4, paddingBottom: 8 }}>
               <button
                 onClick={() => {
